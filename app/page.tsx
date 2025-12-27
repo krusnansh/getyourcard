@@ -54,7 +54,7 @@ const getFirebaseConfig = () => {
 
   return {};
 };
-
+import { saveLead } from "@/lib/leads";
 const firebaseConfig = getFirebaseConfig();
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
