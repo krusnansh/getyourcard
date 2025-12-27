@@ -51,9 +51,7 @@ const getFirebaseConfig = () => {
     };
   }
   // Fallback for Canvas Preview
-  if (typeof __firebase_config !== 'undefined') {
-    return JSON.parse(__firebase_config);
-  }
+
   return {};
 };
 
@@ -492,56 +490,154 @@ const UserDashboard = ({ userApps, navigate }) => (
      </div>
   </div>
 );
+const STATUS_OPTIONS = [
+  'Applied',
+  'Under Review',
+  'Approved',
+  'Rejected',
+  'Agent will call'
+];
 
-const AdminPanel = ({ adminTab, setAdminTab, adminLeads, downloadCSV, adminAllApps, handleStatusUpdate, navigate }) => (
-   <div className="min-h-screen bg-[#0B0F1A] pt-24 px-4 pb-12">
-      <div className="max-w-7xl mx-auto">
-         <div className="flex justify-between items-center mb-8">
-            <div className="flex items-center gap-4">
-               <button onClick={() => navigate('landing')} className="p-2 bg-white/5 rounded-full hover:bg-white/10"><ChevronRight className="rotate-180" size={20}/></button>
-               <h1 className="text-3xl font-bold text-white flex gap-3 items-center"><Lock className="text-purple-400"/> Admin Console</h1>
-            </div>
-            <div className="flex bg-white/5 p-1 rounded-xl">
-              {['leads', 'apps'].map(tab => (
-                <button key={tab} onClick={() => setAdminTab(tab)} className={`px-4 py-2 rounded-lg text-sm font-bold capitalize transition-all ${adminTab === tab ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'}`}>{tab}</button>
-              ))}
-            </div>
-         </div>
+const AdminPanel = ({
+  adminTab,
+  setAdminTab,
+  adminLeads,
+  downloadCSV,
+  adminAllApps,
+  handleStatusUpdate,
+  navigate
+}) => (
+  <div className="min-h-screen bg-[#0B0F1A] pt-24 px-4 pb-12">
+    <div className="max-w-7xl mx-auto">
 
-         {adminTab === 'leads' && (
-            <GlassCard className="overflow-x-auto">
-               <div className="p-4 border-b border-white/5 flex justify-end">
-                  <button onClick={() => downloadCSV(adminLeads, `leads_${new Date().toISOString().split('T')[0]}.csv`)} className="flex items-center gap-2 bg-green-600/20 text-green-400 px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-600/30 transition-colors">
-                     <Download size={16}/> Export CSV
-                  </button>
-               </div>
-               <table className="w-full text-left text-sm text-gray-400">
-                  <thead className="bg-white/5 text-xs uppercase font-bold text-gray-300">
-                     <tr><th className="p-4">Name</th><th className="p-4">Mobile</th><th className="p-4">Income</th><th className="p-4">Matches</th></tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                     {adminLeads.map(lead => (
-                        <tr key={lead.id} className="hover:bg-white/5"><td className="p-4 text-white">{lead.name}<div className="text-xs text-gray-500">{lead.email}</div></td><td className="p-4">{lead.mobile}</td><td className="p-4">₹{lead.income}</td><td className="p-4">{lead.matchedCount}</td></tr>
-                     ))}
-                  </tbody>
-               </table>
-            </GlassCard>
-         )}
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center mb-8">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('landing')}
+            className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition"
+          >
+            <ChevronRight className="rotate-180" size={20} />
+          </button>
+          <h1 className="text-3xl font-bold text-white flex gap-3 items-center">
+            <Lock className="text-purple-400" /> Admin Console
+          </h1>
+        </div>
 
-         {adminTab === 'apps' && (
-            <div className="space-y-4">
-               {adminAllApps.map(app => (
-                  <GlassCard key={app.id} className="p-4 flex flex-col md:flex-row justify-between items-center gap-4">
-                     <div><h4 className="font-bold text-white">{app.userName}</h4><p className="text-sm text-gray-400">{app.cardName}</p></div>
-                     <select value={app.status} onChange={(e) => handleStatusUpdate(app.id, e.target.value)} className="bg-[#0B0F1A] border border-white/20 rounded px-2 py-1 text-white text-sm">
-                        {['Applied', 'Under Review', 'Approved', 'Rejected', 'Agent will call'].map(s => <option key={s} value={s}>{s}</option>)}
-                     </select>
-                  </GlassCard>
-               ))}
-            </div>
-         )}
+        {/* Tabs */}
+        <div className="flex bg-white/5 p-1 rounded-xl">
+          {['leads', 'apps'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setAdminTab(tab)}
+              className={`px-4 py-2 rounded-lg text-sm font-bold capitalize transition-all
+                ${adminTab === tab
+                  ? 'bg-white/10 text-white'
+                  : 'text-slate-400 hover:text-white'
+                }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
       </div>
-   </div>
+
+      {/* ================= LEADS ================= */}
+      {adminTab === 'leads' && (
+        <GlassCard className="overflow-x-auto">
+          <div className="p-4 border-b border-white/5 flex justify-between items-center">
+            <h3 className="text-white font-bold">Captured Leads</h3>
+            <button
+              onClick={() =>
+                downloadCSV(
+                  adminLeads,
+                  `leads_${new Date().toISOString().split('T')[0]}.csv`
+                )
+              }
+              className="flex items-center gap-2 bg-green-600/20 text-green-400 px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-600/30 transition"
+            >
+              <Download size={16} /> Export CSV
+            </button>
+          </div>
+
+          {adminLeads.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              No leads captured yet.
+            </div>
+          ) : (
+            <table className="w-full text-left text-sm text-gray-400">
+              <thead className="bg-white/5 text-xs uppercase font-bold text-gray-300">
+                <tr>
+                  <th className="p-4">Name</th>
+                  <th className="p-4">Mobile</th>
+                  <th className="p-4">Income</th>
+                  <th className="p-4">Matches</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {adminLeads.map(lead => (
+                  <tr key={lead.id} className="hover:bg-white/5 transition">
+                    <td className="p-4 text-white">
+                      {lead.name}
+                      <div className="text-xs text-gray-500">{lead.email}</div>
+                    </td>
+                    <td className="p-4">{lead.mobile}</td>
+                    <td className="p-4">₹{lead.income}</td>
+                    <td className="p-4">{lead.matchedCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </GlassCard>
+      )}
+
+      {/* ================= APPLICATIONS ================= */}
+      {adminTab === 'apps' && (
+        <div className="space-y-4">
+          {adminAllApps.length === 0 ? (
+            <div className="text-gray-500 text-center py-12 bg-white/5 rounded-xl border border-white/10">
+              No applications submitted yet.
+            </div>
+          ) : (
+            adminAllApps.map(app => (
+              <GlassCard
+                key={app.id}
+                className="p-4 flex flex-col md:flex-row justify-between items-center gap-4"
+              >
+                {/* User Info */}
+                <div>
+                  <h4 className="font-bold text-white">{app.userName}</h4>
+                  <p className="text-sm text-gray-400">{app.cardName}</p>
+                  <p className="text-xs text-gray-500">
+                    Applied on{' '}
+                    {app.createdAt?.seconds
+                      ? new Date(app.createdAt.seconds * 1000).toLocaleDateString()
+                      : 'Just now'}
+                  </p>
+                </div>
+
+                {/* Status Selector */}
+                <select
+                  value={app.status}
+                  onChange={(e) =>
+                    handleStatusUpdate(app.id, e.target.value)
+                  }
+                  className="bg-[#0B0F1A] border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400"
+                >
+                  {STATUS_OPTIONS.map(status => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </GlassCard>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  </div>
 );
 
 // --- Main Application ---
