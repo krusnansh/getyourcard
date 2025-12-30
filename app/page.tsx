@@ -16,7 +16,8 @@ import {
   signOut, 
   sendSignInLinkToEmail, 
   isSignInWithEmailLink, 
-  signInWithEmailLink
+  signInWithEmailLink,
+  User as FirebaseUser
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -174,7 +175,14 @@ const STATIC_BLOGS = [
 
 // --- Shared Components ---
 
-const GlassCard = ({ children, className = "", hoverEffect = false, onClick }) => (
+interface GlassCardProps {
+  children: React.ReactNode;
+  className?: string;
+  hoverEffect?: boolean;
+  onClick?: () => void;
+}
+
+const GlassCard = ({ children, className = "", hoverEffect = false, onClick }: GlassCardProps) => (
   <div 
     onClick={onClick}
     className={`
@@ -191,15 +199,26 @@ const GlassCard = ({ children, className = "", hoverEffect = false, onClick }) =
   </div>
 );
 
-const BackgroundBlob = ({ color, position, size, animationDuration }) => (
+interface BackgroundBlobProps {
+  color: string;
+  position: string;
+  size: string;
+  animationDuration?: string;
+}
+
+const BackgroundBlob = ({ color, position, size, animationDuration }: BackgroundBlobProps) => (
   <div 
     className={`absolute rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob ${color} ${position} ${size}`}
     style={{ animationDuration: animationDuration }}
   />
 );
 
-const Badge = ({ status }) => {
-  const styles = {
+interface BadgeProps {
+  status: string;
+}
+
+const Badge = ({ status }: BadgeProps) => {
+  const styles: Record<string, string> = {
     'Applied': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
     'Under Review': 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
     'Approved': 'bg-green-500/20 text-green-300 border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.3)]',
@@ -225,7 +244,7 @@ const CardCarousel = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const getCardStyle = (index) => {
+  const getCardStyle = (index: number) => {
     const length = MOCK_CARDS.length;
     let dist = (index - activeIndex + length) % length;
     
@@ -275,7 +294,12 @@ const CardCarousel = () => {
 
 // --- Page Components ---
 
-const LandingPage = ({ navigate, blogs }) => (
+interface LandingPageProps {
+  navigate: (target: string, data?: any) => void;
+  blogs: any[];
+}
+
+const LandingPage = ({ navigate, blogs }: LandingPageProps) => (
   <div className="relative min-h-screen bg-[#0B0F1A] overflow-hidden text-white pt-20">
     <BackgroundBlob color="bg-blue-600" position="-top-20 -left-20" size="w-96 h-96" animationDuration="7s" />
     <BackgroundBlob color="bg-purple-600" position="top-40 -right-20" size="w-72 h-72" animationDuration="10s" />
@@ -330,7 +354,18 @@ const LandingPage = ({ navigate, blogs }) => (
   </div>
 );
 
-const LoginPage = ({ navigate, handleGoogleLogin, handlePasswordlessLogin, authEmail, setAuthEmail, authMessage, authError, pendingFormSubmission }) => (
+interface LoginPageProps {
+  navigate: (target: string, data?: any) => void;
+  handleGoogleLogin: () => Promise<void>;
+  handlePasswordlessLogin: (e: React.FormEvent) => Promise<void>;
+  authEmail: string;
+  setAuthEmail: (email: string) => void;
+  authMessage: string;
+  authError: string;
+  pendingFormSubmission: boolean;
+}
+
+const LoginPage = ({ navigate, handleGoogleLogin, handlePasswordlessLogin, authEmail, setAuthEmail, authMessage, authError, pendingFormSubmission }: LoginPageProps) => (
   <div className="min-h-screen bg-[#0B0F1A] pt-24 px-4 flex items-center justify-center relative overflow-hidden">
      <BackgroundBlob color="bg-blue-600" position="-top-20 -left-20" size="w-96 h-96" animationDuration="7s" />
      <GlassCard className="max-w-md w-full p-8 relative z-10">
@@ -371,7 +406,23 @@ const LoginPage = ({ navigate, handleGoogleLogin, handlePasswordlessLogin, authE
   </div>
 );
 
-const FormPage = ({ formData, setFormData, handleFormSubmit, user, navigate }) => (
+interface FormPageProps {
+  formData: {
+    name: string;
+    email: string;
+    mobile: string;
+    pan: string;
+    income: string;
+    employment: string;
+    creditHistory: string;
+  };
+  setFormData: (data: any) => void;
+  handleFormSubmit: (e: React.FormEvent) => Promise<void>;
+  user: any;
+  navigate: (target: string, data?: any) => void;
+}
+
+const FormPage = ({ formData, setFormData, handleFormSubmit, user, navigate }: FormPageProps) => (
   <div className="min-h-screen bg-[#0B0F1A] pt-28 px-4 relative overflow-hidden">
     <BackgroundBlob color="bg-purple-900" position="top-20 -right-20" size="w-96 h-96" />
     <div className="max-w-md mx-auto relative z-10">
@@ -433,7 +484,13 @@ const FormPage = ({ formData, setFormData, handleFormSubmit, user, navigate }) =
   </div>
 );
 
-const ResultsPage = ({ matchedCards, handleApply, navigate }) => (
+interface ResultsPageProps {
+  matchedCards: any[];
+  handleApply: (card: any) => Promise<void>;
+  navigate: (target: string, data?: any) => void;
+}
+
+const ResultsPage = ({ matchedCards, handleApply, navigate }: ResultsPageProps) => (
   <div className="min-h-screen bg-[#0B0F1A] pt-24 px-4 pb-12">
     <div className="max-w-7xl mx-auto">
       <div className="flex items-center mb-8">
@@ -449,7 +506,7 @@ const ResultsPage = ({ matchedCards, handleApply, navigate }) => (
             </div>
             <div className="p-6 flex-1 flex flex-col">
                <div className="space-y-3 mb-6 flex-1">
-                  {card.benefits.map((b,i) => <div key={i} className="flex gap-2 text-sm text-gray-300"><CheckCircle size={16} className="text-green-400 shrink-0"/>{b}</div>)}
+                  {card.benefits.map((b: string, i: number) => <div key={i} className="flex gap-2 text-sm text-gray-300"><CheckCircle size={16} className="text-green-400 shrink-0"/>{b}</div>)}
                </div>
                <div className="flex justify-between items-center border-t border-white/10 pt-4 mb-4">
                   <div><div className="text-xs text-gray-500 uppercase">Fee</div><div className="text-white font-bold">₹{card.annualFee}</div></div>
@@ -464,7 +521,13 @@ const ResultsPage = ({ matchedCards, handleApply, navigate }) => (
   </div>
 );
 
-const UserDashboard = ({ userApps, navigate, onViewDetails }) => (
+interface UserDashboardProps {
+  userApps: any[];
+  navigate: (target: string, data?: any) => void;
+  onViewDetails: (app: any) => void;
+}
+
+const UserDashboard = ({ userApps, navigate, onViewDetails }: UserDashboardProps) => (
   <div className="min-h-screen bg-[#0B0F1A] pt-24 px-4 pb-12">
      <div className="max-w-4xl mx-auto">
         <div className="flex items-center mb-8">
@@ -504,6 +567,17 @@ const STATUS_OPTIONS = [
   'Agent will call'
 ];
 
+interface AdminPanelProps {
+  adminTab: string;
+  setAdminTab: (tab: string) => void;
+  adminLeads: any[];
+  downloadCSV: (data: any[], filename: string) => void;
+  adminAllApps: any[];
+  handleStatusUpdate: (applicationId: string, newStatus: string) => Promise<void>;
+  navigate: (target: string, data?: any) => void;
+  onViewDetails: (app: any) => void;
+}
+
 const AdminPanel = ({
   adminTab,
   setAdminTab,
@@ -513,7 +587,7 @@ const AdminPanel = ({
   handleStatusUpdate,
   navigate,
   onViewDetails
-}) => (
+}: AdminPanelProps) => (
   <div className="min-h-screen bg-[#0B0F1A] pt-24 px-4 pb-12">
     <div className="max-w-7xl mx-auto">
 
@@ -670,7 +744,7 @@ const AdminPanel = ({
 
 export default function GetYourCardApp() {
   const [view, setView] = useState('landing');
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -679,17 +753,17 @@ export default function GetYourCardApp() {
   const [authMessage, setAuthMessage] = useState('');
   const [authError, setAuthError] = useState('');
 
-  const [formData, setFormData] = useState({ name: '', email: '', mobile: '', pan: '', income: '', employment: 'salaried', creditHistory: 'no' });
-  const [matchedCards, setMatchedCards] = useState([]);
-  const [userApps, setUserApps] = useState([]);
-  const [blogs, setBlogs] = useState([]);
-  const [selectedBlog, setSelectedBlog] = useState(null);
+  const [formData, setFormData] = useState<{ name: string; email: string; mobile: string; pan: string; income: string; employment: string; creditHistory: string }>({ name: '', email: '', mobile: '', pan: '', income: '', employment: 'salaried', creditHistory: 'no' });
+  const [matchedCards, setMatchedCards] = useState<any[]>([]);
+  const [userApps, setUserApps] = useState<any[]>([]);
+  const [blogs, setBlogs] = useState<any[]>([]);
+  const [selectedBlog, setSelectedBlog] = useState<any>(null);
   const [pendingFormSubmission, setPendingFormSubmission] = useState(false);
 
-  const [adminLeads, setAdminLeads] = useState([]);
-  const [adminAllApps, setAdminAllApps] = useState([]);
+  const [adminLeads, setAdminLeads] = useState<any[]>([]);
+  const [adminAllApps, setAdminAllApps] = useState<any[]>([]);
   const [adminTab, setAdminTab] = useState('leads');
-  const [selectedApplication, setSelectedApplication] = useState(null);
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [showApplicationDetails, setShowApplicationDetails] = useState(false);
 
   const isAdmin = user?.email === ADMIN_EMAIL;
@@ -755,7 +829,7 @@ useEffect(() => {
     if (user && pendingFormSubmission) {
       // Prefill form with user email if available
       if (user.email && !formData.email) {
-        setFormData(prev => ({ ...prev, email: user.email }));
+        setFormData(prev => ({ ...prev, email: user.email || '' }));
       }
       processApplication(user);
       setPendingFormSubmission(false);
@@ -810,14 +884,14 @@ useEffect(() => {
 
   // --- Logic ---
 
-  const navigate = (target, data = null) => {
+  const navigate = (target: string, data: any = null) => {
     window.scrollTo(0, 0);
     setView(target);
     setIsMenuOpen(false);
     if (target === 'blog-detail' && data) setSelectedBlog(data);
   };
 
-  const processApplication = async (currentUser) => {
+  const processApplication = async (currentUser: FirebaseUser | null) => {
     setView('analysis');
     await new Promise(r => setTimeout(r, 2500));
     
@@ -854,7 +928,7 @@ useEffect(() => {
     navigate('results');
   };
 
-  const handleFormSubmit = async (e) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Save form data to localStorage before proceeding
@@ -870,7 +944,7 @@ useEffect(() => {
     processApplication(user);
   };
 
-  const handleApply = async (card) => {
+  const handleApply = async (card: any) => {
     if (!user) return navigate('login');
     
     const appData = {
@@ -923,7 +997,7 @@ useEffect(() => {
     } catch (err) { console.error(err); }
   };
 
-  const handlePasswordlessLogin = async (e) => {
+  const handlePasswordlessLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const actionCodeSettings = {
   url: window.location.origin,
@@ -943,7 +1017,7 @@ useEffect(() => {
     navigate('landing');
   };
 
-  const handleStatusUpdate = async (applicationId, newStatus) => {
+  const handleStatusUpdate = async (applicationId: string, newStatus: string) => {
     if (!isAdmin || !appId) return;
     
     try {
@@ -999,7 +1073,7 @@ useEffect(() => {
     }
   };
 
-  const downloadCSV = (data, filename) => {
+  const downloadCSV = (data: any[], filename: string) => {
     if (!data || !data.length) return;
     const headers = Object.keys(data[0]).join(',');
     const rows = data.map(row => Object.values(row).map(val => typeof val === 'object' ? `"${JSON.stringify(val).replace(/"/g, "'")}"` : `"${val}"`).join(',')).join('\n');
