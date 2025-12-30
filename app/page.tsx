@@ -30,7 +30,9 @@ import {
   doc, 
   updateDoc, 
   deleteDoc,
-  limit
+  limit,
+  getDoc,
+  getDocs
 } from 'firebase/firestore';
 
 // --- Configuration & Helpers ---
@@ -59,7 +61,8 @@ const firebaseConfig = getFirebaseConfig();
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const appId = firebaseConfig.appId || process.env.NEXT_PUBLIC_FIREBASE_APP_ID || firebaseConfig.projectId || 'default';
+
 
 // --- Mock Data ---
 
@@ -461,7 +464,7 @@ const ResultsPage = ({ matchedCards, handleApply, navigate }) => (
   </div>
 );
 
-const UserDashboard = ({ userApps, navigate }) => (
+const UserDashboard = ({ userApps, navigate, onViewDetails }) => (
   <div className="min-h-screen bg-[#0B0F1A] pt-24 px-4 pb-12">
      <div className="max-w-4xl mx-auto">
         <div className="flex items-center mb-8">
@@ -473,16 +476,19 @@ const UserDashboard = ({ userApps, navigate }) => (
               <div className="text-gray-500 text-center py-12 bg-white/5 rounded-xl border border-white/10">No applications found. <button onClick={() => navigate('form')} className="text-blue-400 underline">Find a card</button></div>
            ) : (
               userApps.map(app => (
-                 <GlassCard key={app.id} className="p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div className="flex items-center gap-4">
+                 <GlassCard key={app.id} hoverEffect={true} onClick={() => onViewDetails(app)} className="p-6 flex flex-col sm:flex-row justify-between items-center gap-4 cursor-pointer">
+                    <div className="flex items-center gap-4 flex-1">
                        <div className="bg-blue-600/20 p-3 rounded-full text-blue-400"><CreditCard size={24}/></div>
-                       <div>
+                       <div className="flex-1">
                           <h3 className="text-white font-bold text-lg">{app.cardName}</h3>
                           <p className="text-gray-400 text-sm">{app.issuerName}</p>
                           <p className="text-gray-500 text-xs mt-1">Applied: {app.createdAt?.seconds ? new Date(app.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}</p>
                        </div>
                     </div>
-                    <Badge status={app.status} />
+                    <div className="flex items-center gap-4">
+                       <Badge status={app.status} />
+                       <button className="text-blue-400 hover:text-blue-300 text-sm font-medium">View Details →</button>
+                    </div>
                  </GlassCard>
               ))
            )}
@@ -505,7 +511,8 @@ const AdminPanel = ({
   downloadCSV,
   adminAllApps,
   handleStatusUpdate,
-  navigate
+  navigate,
+  onViewDetails
 }) => (
   <div className="min-h-screen bg-[#0B0F1A] pt-24 px-4 pb-12">
     <div className="max-w-7xl mx-auto">
@@ -569,21 +576,31 @@ const AdminPanel = ({
               <thead className="bg-white/5 text-xs uppercase font-bold text-gray-300">
                 <tr>
                   <th className="p-4">Name</th>
+                  <th className="p-4">Email</th>
                   <th className="p-4">Mobile</th>
                   <th className="p-4">Income</th>
+                  <th className="p-4">PAN</th>
                   <th className="p-4">Matches</th>
+                  <th className="p-4">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {adminLeads.map(lead => (
                   <tr key={lead.id} className="hover:bg-white/5 transition">
-                    <td className="p-4 text-white">
-                      {lead.name}
-                      <div className="text-xs text-gray-500">{lead.email}</div>
-                    </td>
+                    <td className="p-4 text-white">{lead.name}</td>
+                    <td className="p-4 text-gray-300">{lead.email}</td>
                     <td className="p-4">{lead.mobile}</td>
                     <td className="p-4">₹{lead.income}</td>
+                    <td className="p-4 font-mono text-xs">{lead.pan}</td>
                     <td className="p-4">{lead.matchedCount}</td>
+                    <td className="p-4">
+                      <button 
+                        onClick={() => onViewDetails(lead)} 
+                        className="text-blue-400 hover:text-blue-300 text-xs font-medium"
+                      >
+                        View Details
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -606,31 +623,40 @@ const AdminPanel = ({
                 className="p-4 flex flex-col md:flex-row justify-between items-center gap-4"
               >
                 {/* User Info */}
-                <div>
-                  <h4 className="font-bold text-white">{app.userName}</h4>
-                  <p className="text-sm text-gray-400">{app.cardName}</p>
-                  <p className="text-xs text-gray-500">
-                    Applied on{' '}
-                    {app.createdAt?.seconds
-                      ? new Date(app.createdAt.seconds * 1000).toLocaleDateString()
-                      : 'Just now'}
-                  </p>
+                <div className="flex-1 cursor-pointer" onClick={() => onViewDetails && onViewDetails(app)}>
+                  <h4 className="font-bold text-white">{app.formData?.name || app.userName || 'N/A'}</h4>
+                  <p className="text-sm text-gray-400">{app.cardName} • {app.issuerName}</p>
+                  <div className="flex gap-4 mt-1">
+                    <p className="text-xs text-gray-400">
+                      Income: <span className="text-white font-medium">₹{app.formData?.income || app.income || 'N/A'}</span>
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Applied on{' '}
+                      {app.createdAt?.seconds
+                        ? new Date(app.createdAt.seconds * 1000).toLocaleDateString()
+                        : 'Just now'}
+                    </p>
+                  </div>
+                  <button className="text-blue-400 hover:text-blue-300 text-xs font-medium mt-2">View Full Details →</button>
                 </div>
 
                 {/* Status Selector */}
-                <select
-                  value={app.status}
-                  onChange={(e) =>
-                    handleStatusUpdate(app.id, e.target.value)
-                  }
-                  className="bg-[#0B0F1A] border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400"
-                >
-                  {STATUS_OPTIONS.map(status => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-4">
+                  <select
+                    value={app.status || 'Applied'}
+                    onChange={(e) =>
+                      handleStatusUpdate(app.id, e.target.value)
+                    }
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-[#0B0F1A] border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-400"
+                  >
+                    {STATUS_OPTIONS.map(status => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </GlassCard>
             ))
           )}
@@ -663,6 +689,8 @@ export default function GetYourCardApp() {
   const [adminLeads, setAdminLeads] = useState([]);
   const [adminAllApps, setAdminAllApps] = useState([]);
   const [adminTab, setAdminTab] = useState('leads');
+  const [selectedApplication, setSelectedApplication] = useState(null);
+  const [showApplicationDetails, setShowApplicationDetails] = useState(false);
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
@@ -670,6 +698,30 @@ export default function GetYourCardApp() {
   useEffect(() => {
     document.title = "GetYourCard";
   }, []);
+
+  // --- Load saved form data from localStorage based on email ---
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedData = localStorage.getItem('formData');
+      if (savedData) {
+        try {
+          const parsed = JSON.parse(savedData);
+          if (parsed.email) {
+            setFormData(prev => ({ ...prev, ...parsed }));
+          }
+        } catch (e) {
+          console.warn('Failed to parse saved form data', e);
+        }
+      }
+    }
+  }, []);
+
+  // --- Save form data to localStorage when email changes ---
+  useEffect(() => {
+    if (formData.email && typeof window !== 'undefined') {
+      localStorage.setItem('formData', JSON.stringify(formData));
+    }
+  }, [formData]);
 
 // --- Auth Init + Magic Link Completion ---
 useEffect(() => {
@@ -701,6 +753,10 @@ useEffect(() => {
   // --- Resume Flow ---
   useEffect(() => {
     if (user && pendingFormSubmission) {
+      // Prefill form with user email if available
+      if (user.email && !formData.email) {
+        setFormData(prev => ({ ...prev, email: user.email }));
+      }
       processApplication(user);
       setPendingFormSubmission(false);
     }
@@ -711,9 +767,9 @@ useEffect(() => {
     // Initialize blogs with static data immediately
     setBlogs(STATIC_BLOGS);
 
-    // Only attempt Firestore connection if user is logged in
+    // Only attempt Firestore connection if user is logged in and appId is defined
     // This prevents "Permission Denied" errors for guests on the landing page
-    if (user) {
+    if (user && appId) {
       const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'blogs'), orderBy('createdAt', 'desc'));
       const unsub = onSnapshot(q, (snap) => {
         const dbBlogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -723,10 +779,10 @@ useEffect(() => {
       });
       return () => unsub();
     }
-  }, [user]);
+  }, [user, appId]);
 
   useEffect(() => {
-    if (user && view === 'user-dashboard') {
+    if (user && view === 'user-dashboard' && appId) {
       // FIX: Use user-specific path to guarantee permissions
       const q = query(
         collection(db, 'artifacts', appId, 'users', user.uid, 'applications'),
@@ -735,10 +791,10 @@ useEffect(() => {
       const unsub = onSnapshot(q, (snap) => setUserApps(snap.docs.map(d => ({ id: d.id, ...d.data() }))), (err) => console.error("User apps error:", err));
       return () => unsub();
     }
-  }, [user, view]);
+  }, [user, view, appId]);
 
   useEffect(() => {
-    if (isAdmin && view === 'admin') {
+    if (isAdmin && view === 'admin' && appId) {
       // Leads (Public)
       const leadsQ = query(collection(db, 'artifacts', appId, 'public', 'data', 'leads'), orderBy('timestamp', 'desc'), limit(50));
       
@@ -750,7 +806,7 @@ useEffect(() => {
       
       return () => { unsubLeads(); unsubApps(); };
     }
-  }, [isAdmin, view]);
+  }, [isAdmin, view, appId]);
 
   // --- Logic ---
 
@@ -783,19 +839,29 @@ useEffect(() => {
     setMatchedCards(matches);
     
     try {
-      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'leads'), {
-        ...formData,
-        timestamp: serverTimestamp(),
-        matchedCount: matches.length,
-        userId: currentUser?.uid || 'anon',
-        userEmail: currentUser?.email || 'anon'
-      });
+      if (appId) {
+        // Store complete form data in leads collection
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'leads'), {
+          ...formData,
+          timestamp: serverTimestamp(),
+          matchedCount: matches.length,
+          userId: currentUser?.uid || 'anon',
+          userEmail: currentUser?.email || formData.email || 'anon',
+          submittedAt: serverTimestamp()
+        });
+      }
     } catch (err) { console.error(err); }
     navigate('results');
   };
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    
+    // Save form data to localStorage before proceeding
+    if (typeof window !== 'undefined' && formData.email) {
+      localStorage.setItem('formData', JSON.stringify(formData));
+    }
+    
     if (!user) {
       setPendingFormSubmission(true);
       navigate('login');
@@ -815,16 +881,32 @@ useEffect(() => {
       issuerName: card.issuer,
       status: 'Applied',
       createdAt: serverTimestamp(),
-      lastUpdatedAt: serverTimestamp()
+      lastUpdatedAt: serverTimestamp(),
+      // Include all form data for admin/user viewing
+      formData: {
+        name: formData.name,
+        email: formData.email,
+        mobile: formData.mobile,
+        pan: formData.pan,
+        income: formData.income,
+        employment: formData.employment,
+        creditHistory: formData.creditHistory
+      }
     };
 
     try {
-      // 1. Write to User's Private Collection (For User Dashboard)
-      await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'applications'), appData);
+      if (appId) {
+        // 1. Write to User's Private Collection (For User Dashboard)
+        const userDocRef = await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'applications'), appData);
+        const userDocId = userDocRef.id;
 
-      // 2. Write to Public/Admin Collection (For Admin Visibility)
-      // Note: This duplicates data but solves the permission issue for the Admin Panel
-      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'all_applications'), appData);
+        // 2. Write to Public/Admin Collection (For Admin Visibility) with reference to user's doc
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'all_applications'), {
+          ...appData,
+          userDocId: userDocId, // Store reference to user's doc for syncing status
+          userId: user.uid // Store userId for reference
+        });
+      }
       
       navigate('user-dashboard');
     } catch (e) {
@@ -861,15 +943,60 @@ useEffect(() => {
     navigate('landing');
   };
 
-  const handleStatusUpdate = async (appId, newStatus) => {
-    if (!isAdmin) return;
-    // Update the public copy (Admin view)
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'all_applications', appId), {
-      status: newStatus,
-      lastUpdatedAt: serverTimestamp()
-    });
-    // Note: In a real app, a Cloud Function would sync this change to the user's private document.
-    // For this MVP, the user might not see the status change immediately unless we knew their specific doc ID in their subcollection.
+  const handleStatusUpdate = async (applicationId, newStatus) => {
+    if (!isAdmin || !appId) return;
+    
+    try {
+      // Get the application to find user doc reference
+      const appRef = doc(db, 'artifacts', appId, 'public', 'data', 'all_applications', applicationId);
+      const appSnap = await getDoc(appRef);
+      const appData = appSnap.data();
+      
+      if (!appData) {
+        console.error('Application data not found');
+        return;
+      }
+      
+      // Update the public copy (Admin view) first
+      await updateDoc(appRef, {
+        status: newStatus,
+        lastUpdatedAt: serverTimestamp()
+      });
+      
+      // Also update the user's private collection if we have the reference
+      if (appData.userDocId && appData.userId) {
+        try {
+          const userAppRef = doc(db, 'artifacts', appId, 'users', appData.userId, 'applications', appData.userDocId);
+          await updateDoc(userAppRef, {
+            status: newStatus,
+            lastUpdatedAt: serverTimestamp()
+          });
+          console.log('Status synced to user collection successfully');
+        } catch (err) {
+          console.error('Failed to update user collection:', err);
+          // Try to find the document by querying if userDocId doesn't work
+          try {
+            const userAppsRef = collection(db, 'artifacts', appId, 'users', appData.userId, 'applications');
+            const userAppsQuery = query(userAppsRef, where('cardId', '==', appData.cardId), where('createdAt', '==', appData.createdAt));
+            const userAppsSnap = await getDocs(userAppsQuery);
+            if (!userAppsSnap.empty) {
+              const userDoc = userAppsSnap.docs[0];
+              await updateDoc(userDoc.ref, {
+                status: newStatus,
+                lastUpdatedAt: serverTimestamp()
+              });
+              console.log('Status synced via query fallback');
+            }
+          } catch (fallbackErr) {
+            console.error('Fallback sync also failed:', fallbackErr);
+          }
+        }
+      } else {
+        console.warn('Missing userDocId or userId for status sync', { userDocId: appData.userDocId, userId: appData.userId });
+      }
+    } catch (err) {
+      console.error('Status update error:', err);
+    }
   };
 
   const downloadCSV = (data, filename) => {
@@ -981,8 +1108,8 @@ useEffect(() => {
           </div>
         )}
         {view === 'results' && <ResultsPage matchedCards={matchedCards} handleApply={handleApply} navigate={navigate} />}
-        {view === 'user-dashboard' && <UserDashboard userApps={userApps} navigate={navigate} />}
-        {view === 'admin' && <AdminPanel adminTab={adminTab} setAdminTab={setAdminTab} adminLeads={adminLeads} downloadCSV={downloadCSV} adminAllApps={adminAllApps} handleStatusUpdate={handleStatusUpdate} navigate={navigate} />}
+        {view === 'user-dashboard' && <UserDashboard userApps={userApps} navigate={navigate} onViewDetails={(app) => { setSelectedApplication(app); setShowApplicationDetails(true); }} />}
+        {view === 'admin' && <AdminPanel adminTab={adminTab} setAdminTab={setAdminTab} adminLeads={adminLeads} downloadCSV={downloadCSV} adminAllApps={adminAllApps} handleStatusUpdate={handleStatusUpdate} navigate={navigate} onViewDetails={(app) => { setSelectedApplication(app); setShowApplicationDetails(true); }} />}
         {view === 'blog-list' && (
            <div className="min-h-screen bg-[#0B0F1A] pt-24 px-4 pb-12">
               <div className="max-w-7xl mx-auto">
@@ -1015,6 +1142,123 @@ useEffect(() => {
            </div>
         )}
       </main>
+
+      {/* Application Details Modal */}
+      {showApplicationDetails && selectedApplication && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <GlassCard className="p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-bold text-white">Application Details</h3>
+              <button 
+                onClick={() => { setShowApplicationDetails(false); setSelectedApplication(null); }}
+                className="text-gray-400 hover:text-white p-2 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              {/* Card Information */}
+              <div>
+                <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                  <CreditCard size={20} className="text-blue-400" />
+                  Card Information
+                </h4>
+                <div className="bg-white/5 rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Card Name:</span>
+                    <span className="text-white font-medium">{selectedApplication.cardName || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Issuer:</span>
+                    <span className="text-white font-medium">{selectedApplication.issuerName || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Status:</span>
+                    <Badge status={selectedApplication.status || 'Applied'} />
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Applied On:</span>
+                    <span className="text-white">
+                      {selectedApplication.createdAt?.seconds 
+                        ? new Date(selectedApplication.createdAt.seconds * 1000).toLocaleString()
+                        : 'Just now'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* User/Form Information - Always show if available */}
+              <div>
+                <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                  <User size={20} className="text-blue-400" />
+                  Personal Information
+                </h4>
+                <div className="bg-white/5 rounded-lg p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-gray-400 text-sm">Full Name:</span>
+                      <div className="text-white font-medium">{selectedApplication.formData?.name || selectedApplication.name || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-sm">Email:</span>
+                      <div className="text-white font-medium">{selectedApplication.formData?.email || selectedApplication.email || selectedApplication.userEmail || selectedApplication.userName || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-sm">Mobile:</span>
+                      <div className="text-white font-medium">{selectedApplication.formData?.mobile || selectedApplication.mobile || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-sm">PAN Card:</span>
+                      <div className="text-white font-mono font-medium">{selectedApplication.formData?.pan || selectedApplication.pan || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-sm">Monthly Income:</span>
+                      <div className="text-white font-medium">₹{selectedApplication.formData?.income || selectedApplication.income || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-sm">Employment:</span>
+                      <div className="text-white font-medium capitalize">{selectedApplication.formData?.employment || selectedApplication.employment || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-sm">Credit History:</span>
+                      <div className="text-white font-medium capitalize">{selectedApplication.formData?.creditHistory || selectedApplication.creditHistory || 'N/A'}</div>
+                    </div>
+                    {selectedApplication.matchedCount !== undefined && (
+                      <div>
+                        <span className="text-gray-400 text-sm">Matched Cards:</span>
+                        <div className="text-white font-medium">{selectedApplication.matchedCount}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* User Account Info (for admin) */}
+              {selectedApplication.userName && (
+                <div>
+                  <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                    <User size={20} className="text-purple-400" />
+                    Account Information
+                  </h4>
+                  <div className="bg-white/5 rounded-lg p-4 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">User Email:</span>
+                      <span className="text-white font-medium">{selectedApplication.userName}</span>
+                    </div>
+                    {selectedApplication.userId && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">User ID:</span>
+                        <span className="text-white font-mono text-xs">{selectedApplication.userId}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </GlassCard>
+        </div>
+      )}
 
       {view !== 'analysis' && (
         <footer className="bg-[#0B0F1A] border-t border-white/5 py-12 relative z-10">
