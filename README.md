@@ -13,7 +13,7 @@ The product helps users assess their credit card eligibility and identify suitab
 • Potential insurance upsell opportunities
 
 ## Tech Stack
-
+(Completely Vibe Coded)
 • React
 • TypeScript
 • Firebase
